@@ -4,6 +4,7 @@
 
 #include <ArduinoJson.h>
 #include <task_check_info.h>
+#include "global.h"
 
-extern void handleWebSocketMessage(String message);
+void handleWebSocketMessage(String message, void *pvParameters);
 #endif

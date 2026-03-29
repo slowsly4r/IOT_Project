@@ -2,45 +2,79 @@
 
 void startAP()
 {
-    WiFi.mode(WIFI_AP);
+    WiFi.mode(WIFI_AP_STA);
     WiFi.softAP(String(SSID_AP), String(PASS_AP));
-    Serial.print("AP IP: ");
+    Serial.print("AP Mode Started. IP: ");
     Serial.println(WiFi.softAPIP());
 }
 
-void startSTA()
+void startSTA(SystemData_t *pData)
 {
-    if (WIFI_SSID.isEmpty())
+    if (pData->wifi_ssid.isEmpty())
     {
-        vTaskDelete(NULL);
+        Serial.println("WiFi SSID is empty, skipping STA...");
+        return;
     }
 
-    WiFi.mode(WIFI_STA);
+    Serial.println("Connecting to: " + pData->wifi_ssid);
+    WiFi.mode(WIFI_AP_STA);
 
-    if (WIFI_PASS.isEmpty())
+    if (pData->wifi_pass.isEmpty())
     {
-        WiFi.begin(WIFI_SSID.c_str());
+        WiFi.begin(pData->wifi_ssid.c_str());
     }
     else
     {
-        WiFi.begin(WIFI_SSID.c_str(), WIFI_PASS.c_str());
+        WiFi.begin(pData->wifi_ssid.c_str(), pData->wifi_pass.c_str());
     }
 
-    while (WiFi.status() != WL_CONNECTED)
+    int attempt = 0;
+    while (WiFi.status() != WL_CONNECTED && attempt < 20)
     {
-        vTaskDelay(100 / portTICK_PERIOD_MS);
+        vTaskDelay(pdMS_TO_TICKS(500));
+        Serial.print(".");
+        attempt++;
     }
-    //Give a semaphore here
-    xSemaphoreGive(xBinarySemaphoreInternet);
+
+    if (WiFi.status() == WL_CONNECTED) {
+        Serial.println("\nWiFi Connected!");
+        xSemaphoreGive(pData->xInternetReady);
+    } else {
+        Serial.println("\nWiFi Connection Failed!");
+    }
 }
 
-bool Wifi_reconnect()
+bool Wifi_reconnect(SystemData_t *pData)
 {
-    const wl_status_t status = WiFi.status();
-    if (status == WL_CONNECTED)
+    if (WiFi.status() == WL_CONNECTED)
     {
         return true;
     }
-    startSTA();
-    return false;
+    
+    startSTA(pData);
+    return (WiFi.status() == WL_CONNECTED);
+}
+
+void vTaskWifi(void *pvParameters)
+{
+    SystemData_t *pData = (SystemData_t *)pvParameters;
+
+    // 1. Khởi động lần đầu
+    // Nếu chưa có cấu hình WiFi, phát AP để người dùng vào cài đặt
+    startAP();
+
+    if (!pData->wifi_ssid.isEmpty()) {
+        startSTA(pData);
+    }
+
+    while (1)
+    {
+        // 2. Kiểm tra và tự động kết nối lại mỗi 30 giây
+        if (WiFi.status() != WL_CONNECTED) {
+            Serial.println("WiFi lost! Attempting to reconnect...");
+            Wifi_reconnect(pData);
+        }
+
+        vTaskDelay(pdMS_TO_TICKS(30000)); // Nghỉ 30 giây rồi kiểm tra lại
+    }
 }
