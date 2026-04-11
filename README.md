@@ -1,11 +1,30 @@
 # YoloUNO ESP32-S3 IoT Platform
 
+<p align="center">
+  <img src="https://img.shields.io/badge/Platform-ESP32--S3-green?style=flat-square" alt="Platform">
+  <img src="https://img.shields.io/badge/Framework-PlatformIO-orange?style=flat-square" alt="Framework">
+  <img src="https://img.shields.io/badge/RTOS-FreeRTOS-blue?style=flat-square" alt="RTOS">
+  <img src="https://img.shields.io/badge/Microcontroller-240%20MHz-red?style=flat-square" alt="Clock">
+  <img src="https://img.shields.io/github/last-commit/slowsly4r/IOT_Project?style=flat-square" alt="Last Commit">
+  <img src="https://img.shields.io/github/license/slowsly4r/IOT_Project?style=flat-square" alt="License">
+</p>
+
+<p align="center">
+  <a href="https://github.com/nhanksd85/YoloUNO_PlatformIO/tree/RTOS_Project">Original Project</a>
+  |
+  <a href="https://docs.platformio.org">Documentation</a>
+  |
+  <a href="https://www.espressif.com/en/products/socs/esp32-s3">ESP32-S3 Datasheet</a>
+</p>
+
+---
+
 ## Project Overview
 
 This project implements a real-time IoT monitoring and control system on the ESP32-S3 microcontroller using FreeRTOS. The system integrates temperature/humidity sensing, RGB LED indicators, LCD display, web-based dashboard, TinyML anomaly detection, and cloud data publishing.
 
-**Hardware Platform:** ESP32-S3 (YoloUNO board)
-**Framework:** PlatformIO with Arduino framework
+**Hardware Platform:** ESP32-S3 (YoloUNO board)  
+**Framework:** PlatformIO with Arduino framework  
 **RTOS:** FreeRTOS
 
 ## System Architecture
@@ -28,7 +47,7 @@ The system consists of 11 concurrent tasks with priority-based scheduling:
 | Task_Toogle_BOOT | 2 | 2048 | Boot mode toggle |
 | vTaskRS485 | 1 | 2048 | RS485 communication |
 
-**Priority 2:** Sensor and actuator tasks (higher priority for real-time response)
+**Priority 2:** Sensor and actuator tasks (higher priority for real-time response)  
 **Priority 1:** Network and cloud tasks (background operations)
 
 ### Shared Data Management
