@@ -1,10 +1,10 @@
-# YoloUNO ESP32-S3 IoT Platform
+<h1 align="center">YoloUNO ESP32-S3 IoT Platform</h1>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Platform-ESP32--S3-green?style=flat-square" alt="Platform">
-  <img src="https://img.shields.io/badge/Framework-PlatformIO-orange?style=flat-square" alt="Framework">
-  <img src="https://img.shields.io/badge/RTOS-FreeRTOS-blue?style=flat-square" alt="RTOS">
-  <img src="https://img.shields.io/badge/Microcontroller-240%20MHz-red?style=flat-square" alt="Clock">
+  <img src="https://img.shields.io/badge/-ESP32--S3-A455C5?style=flat-square&logo=espressif&logoColor=white" alt="ESP32-S3">
+  <img src="https://img.shields.io/badge/-PlatformIO-FAB444?style=flat-square&logo=platformio&logoColor=white" alt="PlatformIO">
+  <img src="https://img.shields.io/badge/-FreeRTOS-2E3A41?style=flat-square&logo=freertos&logoColor=white" alt="FreeRTOS">
+  <img src="https://img.shields.io/badge/CPU-240%20MHz-0078D7?style=flat-square" alt="CPU Clock">
   <img src="https://img.shields.io/github/last-commit/slowsly4r/IOT_Project?style=flat-square" alt="Last Commit">
   <img src="https://img.shields.io/github/license/slowsly4r/IOT_Project?style=flat-square" alt="License">
 </p>
@@ -15,6 +15,8 @@
   <a href="https://docs.platformio.org">Documentation</a>
   |
   <a href="https://www.espressif.com/en/products/socs/esp32-s3">ESP32-S3 Datasheet</a>
+  |
+  <a href="https://www.freertos.org">FreeRTOS Docs</a>
 </p>
 
 ---
