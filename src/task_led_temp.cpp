@@ -63,7 +63,7 @@ void vTaskLedTempControl(void *pvParameters){
                 break;
 
             case CRITICAL:
-                // SOS pattern: rapid triple blink followed by pause
+                // SOS pattern: rapid double blink followed by pause
                 digitalWrite(LED_GPIO, HIGH); vTaskDelay(pdMS_TO_TICKS(50));
                 digitalWrite(LED_GPIO, LOW);  vTaskDelay(pdMS_TO_TICKS(50));
                 digitalWrite(LED_GPIO, HIGH); vTaskDelay(pdMS_TO_TICKS(50));

@@ -121,6 +121,8 @@ void tiny_ml_task(void *pvParameters)
                 // Log anomaly alerts
                 if (prediction == 1) {
                     Serial.printf("AI ALERT: Anomaly Detected (Score: %.2f)\n", score);
+                } else {
+                    Serial.printf("AI: Normal (Score: %.2f)\n", score);
                 }
             }
         }

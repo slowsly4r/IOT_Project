@@ -6,20 +6,19 @@
 #include "freertos/task.h"
 #include "freertos/semphr.h"
 
-// ============================================================================
+// HARDWARE PIN DEFINITIONS
+#define LED_GPIO  41   // LED (temperature indicator)
+#define FAN_GPIO  42   // Fan (controllable device)
+
 // SHARED DATA STRUCTURE
-// Contains all sensor data and system state shared between FreeRTOS tasks
-// NO GLOBAL VARIABLES - all data encapsulated in this struct
-// Thread-safe access via xDataMutex semaphore
-// ============================================================================
 typedef struct {
     // Sensor readings (updated by sensor task, read by consumer tasks)
     float temperature;
     float humidity;
 
     // Device states (controlled via web/cloud, read by actuator tasks)
-    bool led1_status;
-    bool led2_status;
+    bool led_status;
+    bool fan_status;
 
     // TinyML inference result (written by TinyML task, read by cloud task)
     int ai_prediction;
@@ -33,9 +32,7 @@ typedef struct {
 
     bool isWifiConnected;
 
-    // =========================================================================
     // SEMAPHORES FOR TASK SYNCHRONIZATION
-    // =========================================================================
     // Mutex: protects shared data during read/write (prevents data race)
     SemaphoreHandle_t xDataMutex;
 

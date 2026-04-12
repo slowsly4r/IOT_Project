@@ -28,8 +28,8 @@ void handleWebSocketMessage(String message, void *pvParameters)
         bool state = status.equalsIgnoreCase("ON");
 
         if (xSemaphoreTake(pData->xDataMutex, portMAX_DELAY)) {
-            if (gpio == 41) pData->led1_status = state;
-            if (gpio == 42) pData->led2_status = state;
+            if (gpio == LED_GPIO) pData->led_status = state;
+            if (gpio == FAN_GPIO) pData->fan_status = state;
             xSemaphoreGive(pData->xDataMutex);
         }
 

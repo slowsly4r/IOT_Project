@@ -3,7 +3,6 @@
 // TASK 3: LCD DISPLAY - Shows sensor readings and system states (Consumer)
 // Displays temperature/humidity and 3 states: NORMAL, WARNING, CRITICAL
 // Uses binary semaphores to receive state signals from sensor task
-// REMOVED ALL GLOBAL VARIABLES - uses shared SystemData_t via mutex
 void vTaskLcdDisplay(void *pvParameters) {
     SystemData_t *pData = (SystemData_t *)pvParameters;
     LiquidCrystal_I2C lcd(0x21, 16, 2);

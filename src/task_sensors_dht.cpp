@@ -17,7 +17,6 @@ void temp_humi_monitor(void *pvParameters){
     DHT20 dht20;
 
     Wire.begin(11, 12);
-    Serial.begin(115200);
     dht20.begin();
 
     while (1){

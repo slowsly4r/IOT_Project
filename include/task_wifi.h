@@ -6,8 +6,8 @@
 #include <task_check_info.h>
 #include <task_webserver.h>
 
-#define SSID_AP "ESP32-LOCAL"
-#define PASS_AP "12345678"
+// #define SSID_AP "ESP32-LOCAL"
+// #define PASS_AP "12345678"
 
 bool Wifi_reconnect(SystemData_t *pData);
 void startAP();

@@ -69,8 +69,8 @@ void connnectWSV(void *pvParameters)
               { request->send(LittleFS, "/script.js", "application/javascript"); });
     ctx.server.on("/styles.css", HTTP_GET, [](AsyncWebServerRequest *request)
               { request->send(LittleFS, "/styles.css", "text/css"); });
-    ctx.server.begin();
     ElegantOTA.begin(&ctx.server);
+    ctx.server.begin();
     ctx.webserverIsRunning = true;
     Serial.println("Web Server started and serving UI from LittleFS");
 
@@ -87,7 +87,7 @@ void vTaskWebUpdateDashboard(void *pvParameters) {
 
     while (1) {
         float t = 0, h = 0;
-        bool l1 = false, l2 = false;
+        bool ledState = false, fanState = false;
         uint32_t uptime = millis() / 1000UL;
         uint32_t heap = ESP.getFreeHeap();
         int32_t rssi = (WiFi.status() == WL_CONNECTED) ? WiFi.RSSI() : -127;
@@ -95,18 +95,18 @@ void vTaskWebUpdateDashboard(void *pvParameters) {
         if (xSemaphoreTake(pData->xDataMutex, portMAX_DELAY)) {
             t = pData->temperature;
             h = pData->humidity;
-            l1 = pData->led1_status;
-            l2 = pData->led2_status;
+            ledState = pData->led_status;
+            fanState = pData->fan_status;
             xSemaphoreGive(pData->xDataMutex);
         }
 
         sprintf(
             jsonBuffer,
-            "{\"temp\":%.1f,\"humi\":%.1f,\"led1\":%d,\"led2\":%d,\"uptime\":%lu,\"heap\":%lu,\"rssi\":%ld}",
+            "{\"temp\":%.1f,\"humi\":%.1f,\"led\":%d,\"fan\":%d,\"uptime\":%lu,\"heap\":%lu,\"rssi\":%ld}",
             t,
             h,
-            l1 ? 1 : 0,
-            l2 ? 1 : 0,
+            ledState ? 1 : 0,
+            fanState ? 1 : 0,
             (unsigned long)uptime,
             (unsigned long)heap,
             (long)rssi

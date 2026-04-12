@@ -4,10 +4,8 @@
 namespace {
 constexpr uint32_t MAX_MESSAGE_SIZE = 1024U;
 
-// ============================================================================
 // CORE IOT RUNTIME CONTEXT
 // Manages ThingsBoard MQTT client connection and telemetry publishing
-// ============================================================================
 struct CoreIotRuntimeContext {
     WiFiClient wifiClient;
     Arduino_MQTT_Client mqttClient;
@@ -25,10 +23,8 @@ CoreIotRuntimeContext& getCoreCtx() {
 
 }
 
-// ============================================================================
 // RPC CALLBACK: Handle LED switch commands from cloud dashboard
 // Called when user toggles LED from CoreIOT dashboard
-// ============================================================================
 RPC_Response setLedSwitchValue(const RPC_Data &data)
 {
     CoreIotRuntimeContext &ctx = getCoreCtx();
@@ -37,21 +33,19 @@ RPC_Response setLedSwitchValue(const RPC_Data &data)
     if (ctx.pLocalData != nullptr) {
         // Update LED state in shared data (mutex protected)
         if (xSemaphoreTake(ctx.pLocalData->xDataMutex, portMAX_DELAY)) {
-            ctx.pLocalData->led1_status = newState;
+            ctx.pLocalData->led_status = newState;
             xSemaphoreGive(ctx.pLocalData->xDataMutex);
         }
-        // Control hardware GPIO 41
-        digitalWrite(41, newState ? HIGH : LOW);
+        // Control LED hardware via LED_GPIO
+        digitalWrite(LED_GPIO, newState ? HIGH : LOW);
     }
     Serial.print("Switch state change: ");
     Serial.println(newState);
     return RPC_Response("setLedSwitchValue", newState);
 }
 
-// ============================================================================
 // Send telemetry/attribute data to CoreIOT cloud
 // mode: "telemetry" for time-series data, "attribute" for static data
-// ============================================================================
 void CORE_IOT_sendata(String mode, String feed, String data)
 {
     CoreIotRuntimeContext &ctx = getCoreCtx();
@@ -67,11 +61,9 @@ void CORE_IOT_sendata(String mode, String feed, String data)
     }
 }
 
-// ============================================================================
 // RECONNECT TO CORE IOT
 // Establishes MQTT connection to ThingsBoard server
 // Returns true if connected successfully
-// ============================================================================
 bool CORE_IOT_reconnect(SystemData_t *pData) {
     CoreIotRuntimeContext &ctx = getCoreCtx();
 
@@ -103,11 +95,9 @@ bool CORE_IOT_reconnect(SystemData_t *pData) {
     return true;
 }
 
-// ============================================================================
 // TASK 6: CORE IOT CLOUD PUBLISHING (Consumer)
 // Publishes temperature, humidity, and AI prediction to CoreIOT dashboard
 // Uses MQTT over WiFi (STA mode) to ThingsBoard server
-// ============================================================================
 void vTaskCoreIOT(void *pvParameters) {
     CoreIotRuntimeContext &ctx = getCoreCtx();
     ctx.pLocalData = (SystemData_t *)pvParameters;

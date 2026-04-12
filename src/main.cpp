@@ -35,11 +35,11 @@ void setup() {
   sysData->xTinyMLReady = xSemaphoreCreateBinary();
   sysData->xInternetReady = xSemaphoreCreateBinary();
 
-  // Hardware outputs: LED1 (GPIO 41), Fan (GPIO 42)
-  pinMode(41, OUTPUT);
-  pinMode(42, OUTPUT);
-  digitalWrite(41, LOW);
-  digitalWrite(42, LOW);
+  // Hardware outputs: LED (GPIO 41), Fan (GPIO 42)
+  pinMode(LED_GPIO, OUTPUT);
+  pinMode(FAN_GPIO, OUTPUT);
+  digitalWrite(LED_GPIO, LOW);
+  digitalWrite(FAN_GPIO, LOW);
 
   // Load WiFi config from flash; if fails, enter AP mode
   if (!check_info_File(sysData, false)) {
@@ -49,24 +49,34 @@ void setup() {
   // FREE RTOS TASK CREATION
   // Priority 2: Sensor-related tasks (higher priority)
   // Priority 1: Network/Cloud tasks (lower priority)
-  // Task 1: LED blinks based on temperature (3 behaviors)
+
+  // Task 1: LED blinks based on temperature
   xTaskCreate(vTaskLedTempControl, "Task LED Temperature", 2048, sysData, 2, NULL);
-  // Task 2: NeoPixel color based on humidity (3 levels)
+
+  // Task 2: NeoPixel color based on humidity
   xTaskCreate(vTaskNeoHumiControl, "Task NEO Humidity", 2048, sysData, 2, NULL);
-  // Task 3: Read DHT20 sensor and publish data
+
+  // Task: Read DHT20 sensor and publish data
   xTaskCreate(temp_humi_monitor, "Task TEMP HUMI Monitor", 2048, sysData, 2, NULL);
+
   // Task 3: LCD displays status (normal/warning/critical)
   xTaskCreate(vTaskLcdDisplay, "Task LCD Display", 4096, sysData, 2, NULL);
+
   // Task 5: TinyML inference for anomaly detection
   xTaskCreate(tiny_ml_task, "Tiny ML Task", 8192, sysData, 2, NULL);
+
   // WiFi connection task
   xTaskCreate(vTaskWifi, "WiFi_Task", 4096, (void*)sysData, 2, NULL);
+
   // Task 4: Web server (AP mode) with dashboard
   xTaskCreate(connnectWSV, "Web_Task", 8192, (void*)sysData, 1, NULL);
+
   // Task 4: WebSocket updates dashboard every 2s
   xTaskCreate(vTaskWebUpdateDashboard, "Web_Update", 4096, (void*)sysData, 1, NULL);
+
   // Task 6: Publish telemetry to CoreIOT cloud
   xTaskCreate(vTaskCoreIOT, "Cloud_Task", 8192, (void*)sysData, 1, NULL);
+
   // Toggle boot mode task
   xTaskCreate(Task_Toogle_BOOT, "Task_Toogle_BOOT", 2048, sysData, 2, NULL);
 }
