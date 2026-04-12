@@ -7,8 +7,9 @@
 #include "freertos/semphr.h"
 
 // HARDWARE PIN DEFINITIONS
-#define LED_GPIO  41   // LED (temperature indicator)
-#define FAN_GPIO  42   // Fan (controllable device)
+#define LED_GPIO       41   // LED auto-blink (Task 1 - temperature indicator)
+#define LED_CTRL_GPIO  48   // LED manual control (Web/Cloud)
+#define FAN_GPIO       42   // Fan manual control (Web/Cloud)
 
 // SHARED DATA STRUCTURE
 typedef struct {

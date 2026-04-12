@@ -35,10 +35,12 @@ void setup() {
   sysData->xTinyMLReady = xSemaphoreCreateBinary();
   sysData->xInternetReady = xSemaphoreCreateBinary();
 
-  // Hardware outputs: LED (GPIO 41), Fan (GPIO 42)
+  // Hardware outputs: LED auto (GPIO 41), LED manual (GPIO 48), Fan (GPIO 42)
   pinMode(LED_GPIO, OUTPUT);
+  pinMode(LED_CTRL_GPIO, OUTPUT);
   pinMode(FAN_GPIO, OUTPUT);
   digitalWrite(LED_GPIO, LOW);
+  digitalWrite(LED_CTRL_GPIO, LOW);
   digitalWrite(FAN_GPIO, LOW);
 
   // Load WiFi config from flash; if fails, enter AP mode

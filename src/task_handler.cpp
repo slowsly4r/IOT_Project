@@ -27,14 +27,19 @@ void handleWebSocketMessage(String message, void *pvParameters)
         String status = value["status"].as<String>();
         bool state = status.equalsIgnoreCase("ON");
 
-        if (xSemaphoreTake(pData->xDataMutex, portMAX_DELAY)) {
-            if (gpio == LED_GPIO) pData->led_status = state;
-            if (gpio == FAN_GPIO) pData->fan_status = state;
-            xSemaphoreGive(pData->xDataMutex);
+        // Only LED_CTRL (GPIO 48) and Fan (GPIO 42) are controllable from web
+        // LED (GPIO 41) is auto-controlled by Task 1 (temperature blink)
+        if (gpio == LED_CTRL_GPIO || gpio == FAN_GPIO) {
+            if (xSemaphoreTake(pData->xDataMutex, portMAX_DELAY)) {
+                if (gpio == LED_CTRL_GPIO) pData->led_status = state;
+                if (gpio == FAN_GPIO) pData->fan_status = state;
+                xSemaphoreGive(pData->xDataMutex);
+            }
+            digitalWrite(gpio, state ? HIGH : LOW);
+            Serial.printf("⚙️ Device GPIO %d -> %s\n", gpio, status.c_str());
+        } else {
+            Serial.printf("⚠️ GPIO %d is auto-controlled, ignoring web command\n", gpio);
         }
-
-        digitalWrite(gpio, state ? HIGH : LOW);
-        Serial.printf("⚙️ Device GPIO %d -> %s\n", gpio, status.c_str());
     }
     else if (doc["page"] == "setting")
     {

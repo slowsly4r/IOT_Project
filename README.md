@@ -60,8 +60,8 @@ All inter-task communication uses the `SystemData_t` structure, which is passed 
 typedef struct {
     float temperature;
     float humidity;
-    bool led1_status;
-    bool led2_status;
+    bool led_status;
+    bool fan_status;
     int ai_prediction;
     String wifi_ssid;
     String wifi_pass;
@@ -150,8 +150,8 @@ The ESP32-S3 creates an Access Point with a redesigned web dashboard:
 **Features:**
 - Real-time temperature and humidity gauges
 - Temperature trend chart (Chart.js, 10-minute history)
-- Control interface for 2 devices: LED (GPIO 41) and Fan (GPIO 42)
-- ON/OFF buttons for each device
+- Control interface for 2 devices: LED (GPIO 48) and Fan (GPIO 42)
+- ON/OFF buttons for each device (LED auto-blink on GPIO 41 is not web-controllable)
 - Dark/Light theme toggle with localStorage persistence
 - Device management page for adding/removing dynamic relays
 - Settings page for WiFi STA and CoreIOT configuration
@@ -159,7 +159,7 @@ The ESP32-S3 creates an Access Point with a redesigned web dashboard:
 
 **WebSocket Protocol:**
 - Server sends JSON data every 2 seconds
-- Format: `{"temp":float,"humi":float,"led1":0/1,"led2":0/1,"uptime":int,"heap":int,"rssi":int}`
+- Format: `{"temp":float,"humi":float,"led":0/1,"fan":0/1,"uptime":int,"heap":int,"rssi":int}`
 
 **Implementation:** `src/task_webserver.cpp`, `data/index.html`, `data/script.js`, `data/styles.css`
 
@@ -192,7 +192,8 @@ The system publishes telemetry data to ThingsBoard via MQTT:
 - AI warning flag (0/1)
 
 **Cloud Control:**
-- RPC callback for remote LED control
+- RPC callback `setLedSwitchValue` for remote LED control (GPIO 48)
+- RPC callback `setFanSwitchValue` for remote Fan control (GPIO 42)
 - Device metadata (MAC address, local IP) sent as attributes
 
 **Publishing Interval:** 10 seconds
@@ -209,8 +210,9 @@ The system publishes telemetry data to ThingsBoard via MQTT:
 
 | GPIO | Function |
 |------|----------|
-| 41 | LED output |
-| 42 | Fan output |
+| 41 | LED auto-blink (Task 1 - temperature indicator) |
+| 48 | LED manual control (Web/Cloud) |
+| 42 | Fan manual control (Web/Cloud) |
 | 11 | I2C SDA (DHT20, LCD) |
 | 12 | I2C SCL (DHT20, LCD) |
 | 21 | NeoPixel data |

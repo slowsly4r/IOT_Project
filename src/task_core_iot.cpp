@@ -24,24 +24,40 @@ CoreIotRuntimeContext& getCoreCtx() {
 }
 
 // RPC CALLBACK: Handle LED switch commands from cloud dashboard
-// Called when user toggles LED from CoreIOT dashboard
+// Controls LED_CTRL_GPIO (48), NOT the auto-blink LED_GPIO (41)
 RPC_Response setLedSwitchValue(const RPC_Data &data)
 {
     CoreIotRuntimeContext &ctx = getCoreCtx();
-    Serial.println("Received Switch state");
+    Serial.println("Received LED Switch state");
     bool newState = data;
     if (ctx.pLocalData != nullptr) {
-        // Update LED state in shared data (mutex protected)
         if (xSemaphoreTake(ctx.pLocalData->xDataMutex, portMAX_DELAY)) {
             ctx.pLocalData->led_status = newState;
             xSemaphoreGive(ctx.pLocalData->xDataMutex);
         }
-        // Control LED hardware via LED_GPIO
-        digitalWrite(LED_GPIO, newState ? HIGH : LOW);
+        digitalWrite(LED_CTRL_GPIO, newState ? HIGH : LOW);
     }
-    Serial.print("Switch state change: ");
+    Serial.print("LED state change: ");
     Serial.println(newState);
     return RPC_Response("setLedSwitchValue", newState);
+}
+
+// RPC CALLBACK: Handle Fan switch commands from cloud dashboard
+RPC_Response setFanSwitchValue(const RPC_Data &data)
+{
+    CoreIotRuntimeContext &ctx = getCoreCtx();
+    Serial.println("Received Fan Switch state");
+    bool newState = data;
+    if (ctx.pLocalData != nullptr) {
+        if (xSemaphoreTake(ctx.pLocalData->xDataMutex, portMAX_DELAY)) {
+            ctx.pLocalData->fan_status = newState;
+            xSemaphoreGive(ctx.pLocalData->xDataMutex);
+        }
+        digitalWrite(FAN_GPIO, newState ? HIGH : LOW);
+    }
+    Serial.print("Fan state change: ");
+    Serial.println(newState);
+    return RPC_Response("setFanSwitchValue", newState);
 }
 
 // Send telemetry/attribute data to CoreIOT cloud
@@ -83,9 +99,10 @@ bool CORE_IOT_reconnect(SystemData_t *pData) {
     }
 
     Serial.println("Core IoT Connected!");
-    // Subscribe to RPC callback for cloud-to-device commands
-    static const std::array<RPC_Callback, 1U> callbacks = {
-        RPC_Callback{"setLedSwitchValue", setLedSwitchValue}};
+    // Subscribe to RPC callbacks for cloud-to-device commands
+    static const std::array<RPC_Callback, 2U> callbacks = {
+        RPC_Callback{"setLedSwitchValue", setLedSwitchValue},
+        RPC_Callback{"setFanSwitchValue", setFanSwitchValue}};
     ctx.tb.RPC_Subscribe(callbacks.cbegin(), callbacks.cend());
 
     // Send device metadata as attributes
