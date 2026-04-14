@@ -5,8 +5,6 @@
   <img src="https://img.shields.io/badge/-PlatformIO-FAB444?style=flat-square&logo=platformio&logoColor=white" alt="PlatformIO">
   <img src="https://img.shields.io/badge/-FreeRTOS-2E3A41?style=flat-square&logo=freertos&logoColor=white" alt="FreeRTOS">
   <img src="https://img.shields.io/badge/CPU-240%20MHz-0078D7?style=flat-square" alt="CPU Clock">
-  <img src="https://img.shields.io/github/last-commit/slowsly4r/IOT_Project?style=flat-square" alt="Last Commit">
-  <img src="https://img.shields.io/github/license/slowsly4r/IOT_Project?style=flat-square" alt="License">
 </p>
 
 <p align="center">
