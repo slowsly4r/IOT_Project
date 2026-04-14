@@ -35,9 +35,9 @@ The system consists of 11 concurrent tasks with priority-based scheduling:
 
 | Task | Priority | Stack Size | Description |
 |------|----------|------------|-------------|
-| vTaskLedTempControl | 2 | 2048 | LED blink pattern based on temperature |
-| vTaskNeoHumiControl | 2 | 2048 | NeoPixel color based on humidity |
-| temp_humi_monitor | 2 | 2048 | DHT20 sensor data acquisition |
+| vTaskLedTempControl | 2 | 4096 | LED blink pattern based on temperature |
+| vTaskNeoHumiControl | 2 | 4096 | NeoPixel color based on humidity |
+| temp_humi_monitor | 2 | 4096 | DHT20 sensor data acquisition |
 | vTaskLcdDisplay | 2 | 4096 | LCD status display with 3 states |
 | tiny_ml_task | 2 | 8192 | TensorFlow Lite inference |
 | vTaskWifi | 2 | 4096 | WiFi connection management |
