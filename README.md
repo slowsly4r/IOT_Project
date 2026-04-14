@@ -148,7 +148,7 @@ The ESP32-S3 creates an Access Point with a redesigned web dashboard:
 **Features:**
 - Real-time temperature and humidity gauges
 - Temperature trend chart (Chart.js, 10-minute history)
-- Control interface for 2 devices: LED (GPIO 41) and Fan (GPIO 42)
+- Control interface for 2 devices: LED (GPIO 6) and Fan (GPIO 8)
 - ON/OFF buttons for each device (LED auto-blink on GPIO 48 is not web-controllable)
 - Dark/Light theme toggle with localStorage persistence
 - Device management page for adding/removing dynamic relays
@@ -190,8 +190,8 @@ The system publishes telemetry data to ThingsBoard via MQTT:
 - AI warning flag (0/1)
 
 **Cloud Control:**
-- RPC callback `setLedSwitchValue` for remote LED control (GPIO 41)
-- RPC callback `setFanSwitchValue` for remote Fan control (GPIO 42)
+- RPC callback `setLedSwitchValue` for remote LED control (GPIO 6)
+- RPC callback `setFanSwitchValue` for remote Fan control (GPIO 8)
 - Device metadata (MAC address, local IP) sent as attributes
 
 **Publishing Interval:** 10 seconds
@@ -209,8 +209,8 @@ The system publishes telemetry data to ThingsBoard via MQTT:
 | GPIO | Function |
 |------|----------|
 | 48 | LED auto-blink (Task 1 - temperature indicator) |
-| 41 | LED manual control (Web/Cloud) |
-| 42 | Fan manual control (Web/Cloud) |
+| 6 | LED manual control (Web/Cloud) |
+| 8 | Fan manual control (Web/Cloud) |
 | 11 | I2C SDA (DHT20, LCD) |
 | 12 | I2C SCL (DHT20, LCD) |
 | 21 | NeoPixel data |

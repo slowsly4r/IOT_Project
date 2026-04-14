@@ -13,8 +13,8 @@ window.addEventListener('load', () => {
   initTempTrendChart();
   updateGauge('temp', 0);
   updateGauge('humi', 0);
-  setStatus(41, false);
-  setStatus(42, false);
+  setStatus(6, false);
+  setStatus(8, false);
   updateSystemStats(0, 0, -127);
 });
 
@@ -172,8 +172,8 @@ function onMessage(event) {
       pushTempTrend(data.temp);
     }
     if (typeof data.humi === 'number') updateGauge('humi', data.humi);
-    if (typeof data.led !== 'undefined') setStatus(41, Boolean(data.led));
-    if (typeof data.fan !== 'undefined') setStatus(42, Boolean(data.fan));
+    if (typeof data.led !== 'undefined') setStatus(6, Boolean(data.led));
+    if (typeof data.fan !== 'undefined') setStatus(8, Boolean(data.fan));
 
     updateSystemStats(data.uptime, data.heap, data.rssi);
   } catch (e) {

@@ -8,8 +8,8 @@
 
 // HARDWARE PIN DEFINITIONS
 #define LED_GPIO       48   // LED auto-blink (Task 1 - temperature indicator)
-#define LED_CTRL_GPIO  41   // LED manual control (Web/Cloud)
-#define FAN_GPIO       42   // Fan manual control (Web/Cloud)
+#define LED_CTRL_GPIO  6    // LED manual control (Web/Cloud) - Cổng D3
+#define FAN_GPIO       8    // Fan manual control (Web/Cloud) - Cổng D5
 
 // SHARED DATA STRUCTURE
 typedef struct {

@@ -53,13 +53,13 @@ void setup() {
   // Priority 1: Network/Cloud tasks (lower priority)
 
   // Task 1: LED blinks based on temperature
-  xTaskCreate(vTaskLedTempControl, "Task LED Temperature", 2048, sysData, 2, NULL);
+  xTaskCreate(vTaskLedTempControl, "Task LED Temperature", 4096, sysData, 2, NULL);
 
   // Task 2: NeoPixel color based on humidity
-  xTaskCreate(vTaskNeoHumiControl, "Task NEO Humidity", 2048, sysData, 2, NULL);
+  xTaskCreate(vTaskNeoHumiControl, "Task NEO Humidity", 4096, sysData, 2, NULL);
 
   // Task: Read DHT20 sensor and publish data
-  xTaskCreate(temp_humi_monitor, "Task TEMP HUMI Monitor", 2048, sysData, 2, NULL);
+  xTaskCreate(temp_humi_monitor, "Task TEMP HUMI Monitor", 4096, sysData, 2, NULL);
 
   // Task 3: LCD displays status (normal/warning/critical)
   xTaskCreate(vTaskLcdDisplay, "Task LCD Display", 4096, sysData, 2, NULL);
