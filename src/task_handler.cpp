@@ -27,8 +27,8 @@ void handleWebSocketMessage(String message, void *pvParameters)
         String status = value["status"].as<String>();
         bool state = status.equalsIgnoreCase("ON");
 
-        // Only LED_CTRL (GPIO 48) and Fan (GPIO 42) are controllable from web
-        // LED (GPIO 41) is auto-controlled by Task 1 (temperature blink)
+        // Only LED_CTRL (GPIO 6 - D3) and Fan (GPIO 8 - D5) are controllable from web
+        // LED (GPIO 48) is auto-controlled by Task 1 (temperature blink)
         if (gpio == LED_CTRL_GPIO || gpio == FAN_GPIO) {
             if (xSemaphoreTake(pData->xDataMutex, portMAX_DELAY)) {
                 if (gpio == LED_CTRL_GPIO) pData->led_status = state;

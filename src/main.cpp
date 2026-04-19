@@ -35,7 +35,7 @@ void setup() {
   sysData->xTinyMLReady = xSemaphoreCreateBinary();
   sysData->xInternetReady = xSemaphoreCreateBinary();
 
-  // Hardware outputs: LED auto (GPIO 41), LED manual (GPIO 48), Fan (GPIO 42)
+  // Hardware outputs: LED auto (GPIO 48), LED manual (GPIO 6 - D3), Fan (GPIO 8 - D5)
   pinMode(LED_GPIO, OUTPUT);
   pinMode(LED_CTRL_GPIO, OUTPUT);
   pinMode(FAN_GPIO, OUTPUT);

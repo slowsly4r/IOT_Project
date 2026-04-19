@@ -24,7 +24,7 @@ CoreIotRuntimeContext& getCoreCtx() {
 }
 
 // RPC CALLBACK: Handle LED switch commands from cloud dashboard
-// Controls LED_CTRL_GPIO (48), NOT the auto-blink LED_GPIO (41)
+// Controls LED_CTRL_GPIO (6 - D3), NOT the auto-blink LED_GPIO (48)
 RPC_Response setLedSwitchValue(const RPC_Data &data)
 {
     CoreIotRuntimeContext &ctx = getCoreCtx();
