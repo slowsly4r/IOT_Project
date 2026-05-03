@@ -1,4 +1,70 @@
 #include <task_handler.h>
+#include "fan_control.h"
+#include "task_lcd_display.h"
+
+bool applyLcdState(SystemData_t *pData, bool state)
+{
+    if (pData != NULL && pData->xDataMutex != NULL) {
+        if (xSemaphoreTake(pData->xDataMutex, portMAX_DELAY)) {
+            pData->lcd_status = state;
+            xSemaphoreGive(pData->xDataMutex);
+        }
+    }
+
+    LcdSetPower(state);
+    Serial.printf("⚙️ LCD -> %s\n", state ? "ON" : "OFF");
+    return true;
+}
+
+bool applyDeviceState(SystemData_t *pData, int gpio, bool state)
+{
+    if (gpio == LED_GPIO) {
+        Serial.printf("⚠️ GPIO %d is auto-controlled, ignoring web command\n", gpio);
+        return false;
+    }
+
+    if (gpio != FAN_GPIO) {
+        pinMode(gpio, OUTPUT);
+    }
+
+    if (pData != NULL && pData->xDataMutex != NULL) {
+        if (xSemaphoreTake(pData->xDataMutex, portMAX_DELAY)) {
+            if (gpio == FAN_GPIO) pData->fan_status = state;
+            xSemaphoreGive(pData->xDataMutex);
+        }
+    }
+
+    if (gpio == FAN_GPIO) {
+        if (state) {
+            FanON();
+        } else {
+            FanOFF();
+        }
+    } else {
+        digitalWrite(gpio, state ? HIGH : LOW);
+    }
+    if (gpio == FAN_GPIO) {
+        Serial.printf("⚙️ Fan PWM -> state=%s speed=%u\n", FanGetState() ? "ON" : "OFF", FanGetSpeed());
+    } else {
+        Serial.printf("⚙️ Device GPIO %d -> %s\n", gpio, state ? "ON" : "OFF");
+        Serial.printf("GPIO %d level now = %d\n", gpio, digitalRead(gpio));
+    }
+    return true;
+}
+
+bool applyFanSpeed(SystemData_t *pData, uint8_t speed)
+{
+    if (pData != NULL && pData->xDataMutex != NULL) {
+        if (xSemaphoreTake(pData->xDataMutex, portMAX_DELAY)) {
+            pData->fan_speed = speed;
+            xSemaphoreGive(pData->xDataMutex);
+        }
+    }
+
+    FanSetSpeed(speed);
+    Serial.printf("⚙️ Fan speed -> %u\n", speed);
+    return true;
+}
 
 void handleWebSocketMessage(String message, void *pvParameters)
 {
@@ -17,6 +83,17 @@ void handleWebSocketMessage(String message, void *pvParameters)
     JsonObject value = doc["value"];
     if (doc["page"] == "device")
     {
+        if (value.containsKey("device") && value["device"].as<String>().equalsIgnoreCase("lcd")) {
+            if (!value.containsKey("status")) {
+                Serial.println("⚠️ JSON thiếu thông tin status cho LCD");
+                return;
+            }
+
+            bool state = value["status"].as<String>().equalsIgnoreCase("ON");
+            applyLcdState(pData, state);
+            return;
+        }
+
         if (!value.containsKey("gpio") || !value.containsKey("status"))
         {
             Serial.println("⚠️ JSON thiếu thông tin gpio hoặc status");
@@ -25,21 +102,20 @@ void handleWebSocketMessage(String message, void *pvParameters)
 
         int gpio = value["gpio"];
         String status = value["status"].as<String>();
-        bool state = status.equalsIgnoreCase("ON");
 
-        // Only LED_CTRL (GPIO 6 - D3) and Fan (GPIO 8 - D5) are controllable from web
-        // LED (GPIO 48) is auto-controlled by Task 1 (temperature blink)
-        if (gpio == LED_CTRL_GPIO || gpio == FAN_GPIO) {
-            if (xSemaphoreTake(pData->xDataMutex, portMAX_DELAY)) {
-                if (gpio == LED_CTRL_GPIO) pData->led_status = state;
-                if (gpio == FAN_GPIO) pData->fan_status = state;
-                xSemaphoreGive(pData->xDataMutex);
+        if (gpio == FAN_GPIO && status.equalsIgnoreCase("SPEED")) {
+            if (!value.containsKey("value")) {
+                Serial.println("⚠️ JSON thiếu thông tin value cho SPEED");
+                return;
             }
-            digitalWrite(gpio, state ? HIGH : LOW);
-            Serial.printf("⚙️ Device GPIO %d -> %s\n", gpio, status.c_str());
-        } else {
-            Serial.printf("⚠️ GPIO %d is auto-controlled, ignoring web command\n", gpio);
+            int speed = value["value"].as<int>();
+            speed = constrain(speed, 0, 255);
+            applyFanSpeed(pData, (uint8_t)speed);
+            return;
         }
+
+        bool state = status.equalsIgnoreCase("ON");
+        applyDeviceState(pData, gpio, state);
     }
     else if (doc["page"] == "setting")
     {

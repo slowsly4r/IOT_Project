@@ -1,154 +1,123 @@
 #include "task_core_iot.h"
-#include <array>
+#include <PubSubClient.h>
 
 namespace {
-constexpr uint32_t MAX_MESSAGE_SIZE = 1024U;
-
-// CORE IOT RUNTIME CONTEXT
-// Manages ThingsBoard MQTT client connection and telemetry publishing
+// RAW MQTT CLIENT (Bypass ThingsBoard SDK to use custom topic esp/telemetry)
 struct CoreIotRuntimeContext {
     WiFiClient wifiClient;
-    Arduino_MQTT_Client mqttClient;
-    ThingsBoard tb;
+    PubSubClient mqttClient;
     SystemData_t *pLocalData;
 
     CoreIotRuntimeContext()
-        : wifiClient(), mqttClient(wifiClient), tb(mqttClient, MAX_MESSAGE_SIZE), pLocalData(nullptr) {}
+        : wifiClient(), mqttClient(wifiClient), pLocalData(nullptr) {}
 };
 
 CoreIotRuntimeContext& getCoreCtx() {
     static CoreIotRuntimeContext ctx;
     return ctx;
 }
-
-}
-
-// RPC CALLBACK: Handle LED switch commands from cloud dashboard
-// Controls LED_CTRL_GPIO (6 - D3), NOT the auto-blink LED_GPIO (48)
-RPC_Response setLedSwitchValue(const RPC_Data &data)
-{
-    CoreIotRuntimeContext &ctx = getCoreCtx();
-    Serial.println("Received LED Switch state");
-    bool newState = data;
-    if (ctx.pLocalData != nullptr) {
-        if (xSemaphoreTake(ctx.pLocalData->xDataMutex, portMAX_DELAY)) {
-            ctx.pLocalData->led_status = newState;
-            xSemaphoreGive(ctx.pLocalData->xDataMutex);
-        }
-        digitalWrite(LED_CTRL_GPIO, newState ? HIGH : LOW);
-    }
-    Serial.print("LED state change: ");
-    Serial.println(newState);
-    return RPC_Response("setLedSwitchValue", newState);
-}
-
-// RPC CALLBACK: Handle Fan switch commands from cloud dashboard
-RPC_Response setFanSwitchValue(const RPC_Data &data)
-{
-    CoreIotRuntimeContext &ctx = getCoreCtx();
-    Serial.println("Received Fan Switch state");
-    bool newState = data;
-    if (ctx.pLocalData != nullptr) {
-        if (xSemaphoreTake(ctx.pLocalData->xDataMutex, portMAX_DELAY)) {
-            ctx.pLocalData->fan_status = newState;
-            xSemaphoreGive(ctx.pLocalData->xDataMutex);
-        }
-        digitalWrite(FAN_GPIO, newState ? HIGH : LOW);
-    }
-    Serial.print("Fan state change: ");
-    Serial.println(newState);
-    return RPC_Response("setFanSwitchValue", newState);
 }
 
 // Send telemetry/attribute data to CoreIOT cloud
-// mode: "telemetry" for time-series data, "attribute" for static data
 void CORE_IOT_sendata(String mode, String feed, String data)
 {
     CoreIotRuntimeContext &ctx = getCoreCtx();
-
-    if (mode == "attribute")
-    {
-        ctx.tb.sendAttributeData(feed.c_str(), data);
-    }
-    else if (mode == "telemetry")
-    {
-        float value = data.toFloat();
-        ctx.tb.sendTelemetryData(feed.c_str(), value);
+    if (!ctx.mqttClient.connected()) return;
+    
+    String payload = "{\"" + feed + "\":" + data + "}";
+    if (mode == "attribute") {
+        ctx.mqttClient.publish("esp/attributes", payload.c_str());
+    } else {
+        ctx.mqttClient.publish("esp/telemetry", payload.c_str());
     }
 }
 
 // RECONNECT TO CORE IOT
-// Establishes MQTT connection to ThingsBoard server
-// Returns true if connected successfully
 bool CORE_IOT_reconnect(SystemData_t *pData) {
     CoreIotRuntimeContext &ctx = getCoreCtx();
 
-    if (ctx.tb.connected()) return true;
+    if (ctx.mqttClient.connected()) return true;
     if (WiFi.status() != WL_CONNECTED) return false;
-    if (pData->core_iot_server.length() == 0 || pData->core_iot_token.length() == 0) return false;
-    if (pData->core_iot_port.toInt() <= 0) return false;
-
-    Serial.println("Connecting to Core IoT (ThingsBoard)...");
-
-    const char* server = pData->core_iot_server.c_str();
-    const char* token = pData->core_iot_token.c_str();
-    int port = pData->core_iot_port.toInt();
-
-    if (!ctx.tb.connect(server, token, port)) {
+    
+    if (pData->core_iot_server.length() == 0 || pData->core_iot_token.length() == 0) {
+        Serial.println("Core IOT: Server or Token is EMPTY!");
         return false;
     }
 
-    Serial.println("Core IoT Connected!");
-    // Subscribe to RPC callbacks for cloud-to-device commands
-    static const std::array<RPC_Callback, 2U> callbacks = {
-        RPC_Callback{"setLedSwitchValue", setLedSwitchValue},
-        RPC_Callback{"setFanSwitchValue", setFanSwitchValue}};
-    ctx.tb.RPC_Subscribe(callbacks.cbegin(), callbacks.cend());
+    Serial.println("Connecting to Core IoT (Raw MQTT)...");
+    Serial.printf("  Server: %s:%s\n", pData->core_iot_server.c_str(), pData->core_iot_port.c_str());
 
-    // Send device metadata as attributes
-    ctx.tb.sendAttributeData("macAddress", WiFi.macAddress().c_str());
-    ctx.tb.sendAttributeData("localIp", WiFi.localIP().toString().c_str());
+    ctx.mqttClient.setServer(pData->core_iot_server.c_str(), pData->core_iot_port.toInt());
+
+    // Token goes into username field, no password needed
+    String clientId = "ESP32_T1_" + String(random(0xffff), HEX);
+    if (!ctx.mqttClient.connect(clientId.c_str(), pData->core_iot_token.c_str(), NULL)) {
+        Serial.printf("Core IoT: MQTT connect FAILED, state=%d\n", ctx.mqttClient.state());
+        return false;
+    }
+
+    Serial.println("✅ Core IoT Connected (Custom Topic ESP)!");
+
+    // Send device metadata directly to attributes topic
+    String attrPayload = "{\"macAddress\":\"" + WiFi.macAddress() + "\",\"localIp\":\"" + WiFi.localIP().toString() + "\"}";
+    ctx.mqttClient.publish("esp/attributes", attrPayload.c_str());
 
     return true;
 }
 
 // TASK 6: CORE IOT CLOUD PUBLISHING (Consumer)
-// Publishes temperature, humidity, and AI prediction to CoreIOT dashboard
+// Publishes temperature and humidity to CoreIOT dashboard
 // Uses MQTT over WiFi (STA mode) to ThingsBoard server
 void vTaskCoreIOT(void *pvParameters) {
     CoreIotRuntimeContext &ctx = getCoreCtx();
     ctx.pLocalData = (SystemData_t *)pvParameters;
 
     while (1) {
-        // Wait for WiFi to be ready before attempting cloud connection
-        if (xSemaphoreTake(ctx.pLocalData->xInternetReady, pdMS_TO_TICKS(5000)) == pdTRUE) {
-            xSemaphoreGive(ctx.pLocalData->xInternetReady);  // Give back for next iteration
-
-            if (CORE_IOT_reconnect(ctx.pLocalData)) {
-                float t = 0.0f, h = 0.0f;
-                int ai_res = 0;
-
-                // Read shared sensor data (mutex protected)
-                if (xSemaphoreTake(ctx.pLocalData->xDataMutex, portMAX_DELAY)) {
-                    t = ctx.pLocalData->temperature;
-                    h = ctx.pLocalData->humidity;
-                    ai_res = ctx.pLocalData->ai_prediction;
-                    xSemaphoreGive(ctx.pLocalData->xDataMutex);
-                }
-
-                // Publish telemetry data to cloud dashboard
-                ctx.tb.sendTelemetryData("temperature", t);
-                ctx.tb.sendTelemetryData("humidity", h);
-                ctx.tb.sendTelemetryData("ai_warning", ai_res);
-
-                Serial.println("Data synced to Cloud Dashboard");
-            }
-        } else {
-            Serial.println("Core IOT: Waiting for WiFi connection...");
+        // Check WiFi STA connection first
+        if (WiFi.status() != WL_CONNECTED) {
+            Serial.printf("Core IOT: WiFi NOT connected (status=%d), waiting...\n", WiFi.status());
+            vTaskDelay(pdMS_TO_TICKS(3000));
+            continue;
         }
 
-        // Process MQTT callbacks (keep connection alive)
-        ctx.tb.loop();
-        vTaskDelay(pdMS_TO_TICKS(10000));  // Publish every 10 seconds
+        // Attempt MQTT connection
+        if (!CORE_IOT_reconnect(ctx.pLocalData)) {
+            Serial.println("Core IOT: Connect/reconnect failed, retry in 5s");
+            vTaskDelay(pdMS_TO_TICKS(5000));
+            continue;
+        }
+
+        // Maintain MQTT connection (Keep-alive)
+        ctx.mqttClient.loop();
+
+        // Read shared sensor data (mutex protected)
+        float t = 0.0f, h = 0.0f;
+
+        if (xSemaphoreTake(ctx.pLocalData->xDataMutex, pdMS_TO_TICKS(2000)) == pdTRUE) {
+            t = ctx.pLocalData->temperature;
+            h = ctx.pLocalData->humidity;
+            xSemaphoreGive(ctx.pLocalData->xDataMutex);
+        } else {
+            Serial.println("Core IOT: Mutex timeout, skip this cycle");
+            vTaskDelay(pdMS_TO_TICKS(1000));
+            continue;
+        }
+
+        // FORMAT AND SEND RAW JSON TO CUSTOM TOPIC 'esp/telemetry'
+        String payload = "{\"temperature\":" + String(t, 1) + ",\"humidity\":" + String(h, 1) + "}";
+        
+        bool ok = ctx.mqttClient.publish("esp/telemetry", payload.c_str());
+        
+        // Flush internal buffers
+        ctx.mqttClient.loop();
+
+        if (ok) {
+            Serial.printf("✅ Telemetry synced -> esp/telemetry: %s\n", payload.c_str());
+        } else {
+            Serial.printf("❌ Telemetry FAILED, MQTT state: %d\n", ctx.mqttClient.state());
+        }
+
+        // Publish every 10 seconds
+        vTaskDelay(pdMS_TO_TICKS(10000));
     }
 }

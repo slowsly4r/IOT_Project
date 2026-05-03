@@ -12,6 +12,11 @@
 #include "task_wifi.h"
 #include "task_webserver.h"
 #include "task_core_iot.h"
+#include "fan_control.h"
+
+#ifndef ENABLE_GPIO7_HARDWARE_TEST
+#define ENABLE_GPIO7_HARDWARE_TEST 0
+#endif
 
 void setup() {
   // Shared data structure accessible by all FreeRTOS tasks
@@ -34,14 +39,13 @@ void setup() {
   sysData->xLcdSensorError = xSemaphoreCreateBinary();
   sysData->xTinyMLReady = xSemaphoreCreateBinary();
   sysData->xInternetReady = xSemaphoreCreateBinary();
+  sysData->lcd_status = true;
+  sysData->fan_speed = 255;
 
-  // Hardware outputs: LED auto (GPIO 48), LED manual (GPIO 6 - D3), Fan (GPIO 8 - D5)
+  // Hardware outputs: LED auto (GPIO 48), LCD backlight/display, Fan (GPIO 8 - D5)
   pinMode(LED_GPIO, OUTPUT);
-  pinMode(LED_CTRL_GPIO, OUTPUT);
-  pinMode(FAN_GPIO, OUTPUT);
   digitalWrite(LED_GPIO, LOW);
-  digitalWrite(LED_CTRL_GPIO, LOW);
-  digitalWrite(FAN_GPIO, LOW);
+  FanInit();
 
   // Load WiFi config from flash; if fails, enter AP mode
   if (!check_info_File(sysData, false)) {

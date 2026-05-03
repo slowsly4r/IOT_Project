@@ -31,6 +31,77 @@ void Webserver_sendata(String data)
     }
 }
 
+void handleHttpAction(AsyncWebServerRequest *request)
+{
+    WebRuntimeContext &ctx = getWebCtx();
+
+    if (ctx.pLocalData == nullptr) {
+        request->send(503, "text/plain", "Device not ready");
+        return;
+    }
+
+    if (!request->hasParam("status")) {
+        request->send(400, "text/plain", "Missing status");
+        return;
+    }
+
+    String status = request->getParam("status")->value();
+
+    if (request->hasParam("device")) {
+        String device = request->getParam("device")->value();
+        if (device.equalsIgnoreCase("lcd")) {
+            bool state = status.equalsIgnoreCase("ON");
+            if (applyLcdState(ctx.pLocalData, state)) {
+                request->send(200, "text/plain", "OK");
+            } else {
+                request->send(400, "text/plain", "Ignored");
+            }
+            return;
+        }
+    }
+
+    if (!request->hasParam("gpio")) {
+        request->send(400, "text/plain", "Missing gpio or device");
+        return;
+    }
+
+    int gpio = request->getParam("gpio")->value().toInt();
+
+    if (gpio == FAN_GPIO && status.equalsIgnoreCase("SPEED")) {
+        if (!request->hasParam("value")) {
+            request->send(400, "text/plain", "Missing value");
+            return;
+        }
+
+        int speed = request->getParam("value")->value().toInt();
+        speed = constrain(speed, 0, 255);
+        if (applyFanSpeed(ctx.pLocalData, (uint8_t)speed)) {
+            request->send(200, "text/plain", "OK");
+        } else {
+            request->send(400, "text/plain", "Ignored");
+        }
+        return;
+    }
+
+    if (gpio == 6) {
+        bool state = status.equalsIgnoreCase("ON");
+        if (applyLcdState(ctx.pLocalData, state)) {
+            request->send(200, "text/plain", "OK");
+        } else {
+            request->send(400, "text/plain", "Ignored");
+        }
+        return;
+    }
+
+    bool state = status.equalsIgnoreCase("ON");
+
+    if (applyDeviceState(ctx.pLocalData, gpio, state)) {
+        request->send(200, "text/plain", "OK");
+    } else {
+        request->send(400, "text/plain", "Ignored");
+    }
+}
+
 void onEvent(AsyncWebSocket *server, AsyncWebSocketClient *client, AwsEventType type, void *arg, uint8_t *data, size_t len)
 {
     WebRuntimeContext &ctx = getWebCtx();
@@ -49,8 +120,8 @@ void onEvent(AsyncWebSocket *server, AsyncWebSocketClient *client, AwsEventType 
 
         if (info->opcode == WS_TEXT)
         {
-            String message;
-            message += String((char *)data).substring(0, len);
+            String message = String((char *)data, len);
+            Serial.printf("WebSocket RX len=%u: %s\n", (unsigned)len, message.c_str());
             handleWebSocketMessage(message, ctx.pLocalData);
         }
     }
@@ -63,6 +134,7 @@ void connnectWSV(void *pvParameters)
 
     ctx.ws.onEvent(onEvent);
     ctx.server.addHandler(&ctx.ws);
+    ctx.server.on("/action", HTTP_GET, handleHttpAction);
     ctx.server.on("/", HTTP_GET, [](AsyncWebServerRequest *request)
               { request->send(LittleFS, "/index.html", "text/html"); });
     ctx.server.on("/script.js", HTTP_GET, [](AsyncWebServerRequest *request)
@@ -87,7 +159,9 @@ void vTaskWebUpdateDashboard(void *pvParameters) {
 
     while (1) {
         float t = 0, h = 0;
-        bool ledState = false, fanState = false;
+        bool lcdState = false, fanState = false;
+        int aiPrediction = 0;
+        uint8_t fanSpeed = 0;
         uint32_t uptime = millis() / 1000UL;
         uint32_t heap = ESP.getFreeHeap();
         int32_t rssi = (WiFi.status() == WL_CONNECTED) ? WiFi.RSSI() : -127;
@@ -95,18 +169,22 @@ void vTaskWebUpdateDashboard(void *pvParameters) {
         if (xSemaphoreTake(pData->xDataMutex, portMAX_DELAY)) {
             t = pData->temperature;
             h = pData->humidity;
-            ledState = pData->led_status;
+            lcdState = pData->lcd_status;
             fanState = pData->fan_status;
+            aiPrediction = pData->ai_prediction;
+            fanSpeed = pData->fan_speed;
             xSemaphoreGive(pData->xDataMutex);
         }
 
         sprintf(
             jsonBuffer,
-            "{\"temp\":%.1f,\"humi\":%.1f,\"led\":%d,\"fan\":%d,\"uptime\":%lu,\"heap\":%lu,\"rssi\":%ld}",
+            "{\"temp\":%.1f,\"humi\":%.1f,\"lcd\":%d,\"fan\":%d,\"ai\":%d,\"fanSpeed\":%u,\"uptime\":%lu,\"heap\":%lu,\"rssi\":%ld}",
             t,
             h,
-            ledState ? 1 : 0,
+            lcdState ? 1 : 0,
             fanState ? 1 : 0,
+            aiPrediction,
+            (unsigned int)fanSpeed,
             (unsigned long)uptime,
             (unsigned long)heap,
             (long)rssi

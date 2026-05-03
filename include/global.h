@@ -8,8 +8,11 @@
 
 // HARDWARE PIN DEFINITIONS
 #define LED_GPIO       48   // LED auto-blink (Task 1 - temperature indicator)
-#define LED_CTRL_GPIO  6    // LED manual control (Web/Cloud) - Cổng D3
 #define FAN_GPIO       8    // Fan manual control (Web/Cloud) - Cổng D5
+#define FAN_PWM_FREQ   25000U
+#define FAN_PWM_CHANNEL 1U
+#define FAN_PWM_RESOLUTION 8U
+#define FAN_PWM_STOP   0U
 
 // SHARED DATA STRUCTURE
 typedef struct {
@@ -18,8 +21,9 @@ typedef struct {
     float humidity;
 
     // Device states (controlled via web/cloud, read by actuator tasks)
-    bool led_status;
+    bool lcd_status;
     bool fan_status;
+    uint8_t fan_speed;
 
     // TinyML inference result (written by TinyML task, read by cloud task)
     int ai_prediction;

@@ -2,8 +2,7 @@
 #define __TASK_CORE_IOT_H__
 
 #include <WiFi.h>
-#include <ThingsBoard.h>
-#include <Arduino_MQTT_Client.h>
+#include <PubSubClient.h>
 #include <HTTPClient.h>
 #include "task_check_info.h"
 

@@ -83,10 +83,25 @@
                 </div>
               </div>
             </div>
+            <div class="trend-box">
+              <div class="trend-head">
+                <span>Xu h&#x1B0;&#x1EDB;ng &#x111;&#x1ED9; &#x1EA9;m (10 ph&#xFA;t)</span>
+              </div>
+              <canvas id="humiTrendChart"></canvas>
+            </div>
           </article>
         </div>
 
         <div class="control-column">
+          <article class="floating-card quick-card">
+            <div class="quick-head">
+              <i class="fa-solid fa-brain"></i>
+              <h4>TinyML AI</h4>
+            </div>
+            <p class="status-text">Kết quả: <span id="aiStatus" class="status-pill status-on">Normal</span></p>
+            <p class="status-text" style="margin-bottom:0;">Mức phân loại từ cảm biến DHT20 theo TinyML</p>
+          </article>
+
           <div class="control-header">
             <h3>&#x110;i&#x1EC1;u khi&#x1EC3;n nhanh</h3>
             <div class="line"></div>
@@ -94,13 +109,13 @@
 
           <article class="floating-card quick-card">
             <div class="quick-head">
-              <i class="fa-regular fa-lightbulb"></i>
-              <h4>LED (Cổng D3 - GPIO 6)</h4>
+              <i class="fa-solid fa-display"></i>
+              <h4>Màn hình LCD (I2C 0x21)</h4>
             </div>
-            <p class="status-text">Status: <span id="status6" class="status-pill status-off">OFF</span></p>
+            <p class="status-text">Status: <span id="statusLCD" class="status-pill status-on">ON</span></p>
             <div class="btn-group">
-              <button class="btn-glow btn-on" onclick="controlDevice(6, 'ON')">ON</button>
-              <button class="btn-glow btn-off" onclick="controlDevice(6, 'OFF')">OFF</button>
+              <button class="btn-glow btn-on" onclick="controlLcd('ON')">ON</button>
+              <button class="btn-glow btn-off" onclick="controlLcd('OFF')">OFF</button>
             </div>
           </article>
 
@@ -114,6 +129,22 @@
               <button class="btn-glow btn-on" onclick="controlDevice(8, 'ON')">ON</button>
               <button class="btn-glow btn-off" onclick="controlDevice(8, 'OFF')">OFF</button>
             </div>
+            <div class="fan-speed-wrap">
+              <div class="fan-speed-head">
+                <span>Tốc độ quạt</span>
+                <strong id="fanSpeedValue">255</strong>
+              </div>
+              <input
+                class="fan-speed-slider"
+                type="range"
+                id="fanSpeedSlider"
+                min="0"
+                max="255"
+                value="255"
+                oninput="onFanSpeedInput(this.value)"
+                onchange="setFanSpeed(this.value)"
+              />
+            </div>
           </article>
         </div>
       </div>
@@ -124,9 +155,9 @@
         <h2>Thi&#x1EBF;t b&#x1ECB;</h2>
         <p class="section-intro">
           M&#x1EE5;c Thi&#x1EBF;t b&#x1ECB; gi&#xFA;p b&#x1EA1;n qu&#x1EA3;n l&#xFD; relay tr&#x1EF1;c quan v&#xE0;
-          g&#x1EED;i l&#x1EC7;nh &#x111;i&#x1EC1;u khi&#x1EC3;n theo th&#x1EDD;i gian th&#x1EF1;c qua WebSocket.
+          g&#x1EED;i l&#x1EC7;nh &#x111;i&#x1EC1;u khi&#x1EC3;n qua HTTP m&#x1ED9t c&#xE1;ch r&#xF5 r&#xE0;ng.
           M&#x1ECD;i t&#x1B0;&#x1A1;ng t&#xE1;c &#x111;&#x1EC1;u &#x111;&#x1B0;&#x1EE3;c ph&#x1EA3;n h&#x1ED3;i
-          g&#x1EA7;n nh&#x1B0; ngay l&#x1EAD;p t&#x1EE9;c, gi&#xFA;p b&#x1EA1;n theo d&#xF5;i tr&#x1EA1;ng th&#xE1;i
+          g&#x1EA7;n nh&#x1B0; ngay l&#x1EAD;p t&#x1EE9c, gi&#xFA;p b&#x1EA1n theo d&#xF5;i tr&#x1EA1;ng th&#xE1;i
           thi&#x1EBF;t b&#x1ECB; m&#x1ED9;t c&#xE1;ch m&#x1EA1;ch l&#x1EA1;c.
         </p>
         <ul class="feature-list">
@@ -151,8 +182,8 @@
           bi&#x1EC7;t r&#xF5; lu&#x1ED3;ng &#x111;&#x1ECD;c c&#x1EA3;m bi&#x1EBF;n, giao ti&#x1EBF;p m&#x1EA1;ng v&#xE0;
           c&#x1EAD;p nh&#x1EAD;t giao di&#x1EC7;n.
           Dashboard &#x111;&#x1B0;&#x1EE3;c &#x111;&#x1EA9;y d&#x1EEF; li&#x1EC7;u theo th&#x1EDD;i gian th&#x1EF1;c qua
-          WebSocket, cho &#x111;&#x1ED9; tr&#x1EC5; th&#x1EA5;p h&#x1A1;n &#x111;&#xE1;ng k&#x1EC3; so v&#x1EDB;i
-          polling HTTP.
+          WebSocket, c&#xF2;n l&#x1EC7;nh &#x111;i&#x1EC1;u khi&#x1EC3;n LCD/Fan d&#xF9;ng HTTP
+          &#x111;&#x1EC3; debug r&#x1ECF; r&#xE0;ng h&#x1A1;n.
         </p>
         <ul class="feature-list">
           <li>Vi &#x111;i&#x1EC1;u khi&#x1EC3;n: ESP32-S3 dual-core l&#xEA;n &#x111;&#x1EBF;n 240 MHz.</li>

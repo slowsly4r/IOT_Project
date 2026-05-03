@@ -1,24 +1,63 @@
 #include "task_lcd_display.h"
 
+namespace {
+LiquidCrystal_I2C lcd(0x21, 16, 2);
+bool g_lcdInitialized = false;
+bool g_lcdPowerEnabled = true;
+
+void applyLcdPowerState()
+{
+    if (!g_lcdInitialized) {
+        return;
+    }
+
+    if (g_lcdPowerEnabled) {
+        lcd.display();
+        lcd.backlight();
+    } else {
+        lcd.noBacklight();
+        lcd.noDisplay();
+    }
+}
+}
+
+void LcdInit()
+{
+    if (g_lcdInitialized) {
+        applyLcdPowerState();
+        return;
+    }
+
+    byte thermometer[8] = {0x4, 0xA, 0xA, 0xE, 0xE, 0x1F, 0x1F, 0xE};
+    byte droplet[8] = {0x4, 0x4, 0xA, 0xA, 0x11, 0x11, 0x11, 0xE};
+
+    lcd.begin();
+    lcd.createChar(0, thermometer);
+    lcd.createChar(1, droplet);
+    g_lcdInitialized = true;
+    applyLcdPowerState();
+    lcd.clear();
+    lcd.setCursor(0, 0);
+    lcd.print("System Starting");
+}
+
+void LcdSetPower(bool enabled)
+{
+    g_lcdPowerEnabled = enabled;
+    applyLcdPowerState();
+}
+
+bool LcdGetPower()
+{
+    return g_lcdPowerEnabled;
+}
+
 // TASK 3: LCD DISPLAY - Shows sensor readings and system states (Consumer)
 // Displays temperature/humidity and 3 states: NORMAL, WARNING, CRITICAL
 // Uses binary semaphores to receive state signals from sensor task
 void vTaskLcdDisplay(void *pvParameters) {
     SystemData_t *pData = (SystemData_t *)pvParameters;
-    LiquidCrystal_I2C lcd(0x21, 16, 2);
-
-    // Custom characters: thermometer (icon 0) and droplet (icon 1)
-    byte thermometer[8] = {0x4, 0xA, 0xA, 0xE, 0xE, 0x1F, 0x1F, 0xE};
-    byte droplet[8] = {0x4, 0x4, 0xA, 0xA, 0x11, 0x11, 0x11, 0xE};
-
-    lcd.begin();
-    lcd.backlight();
-    lcd.clear();
-    lcd.setCursor(0, 0);
-    lcd.print("System Starting");
-
-    lcd.createChar(0, thermometer);
-    lcd.createChar(1, droplet);
+    LcdInit();
 
     char buffer[17];
 
@@ -34,6 +73,8 @@ void vTaskLcdDisplay(void *pvParameters) {
                 hum = pData->humidity;
                 xSemaphoreGive(pData->xDataMutex);
             }
+
+            applyLcdPowerState();
 
             // Display temperature and humidity with custom icons
             lcd.clear();
@@ -52,12 +93,14 @@ void vTaskLcdDisplay(void *pvParameters) {
             lcd.setCursor(0, 1);
             if (xSemaphoreTake(pData->xLcdCritical, 0) == pdTRUE) {
                 lcd.print("STATE: CRITICAL ");
-                // Flashing backlight for critical alert
-                for (int i = 0; i < 2; i++) {
-                    lcd.noBacklight();
-                    vTaskDelay(pdMS_TO_TICKS(50));
-                    lcd.backlight();
-                    vTaskDelay(pdMS_TO_TICKS(50));
+                if (LcdGetPower()) {
+                    // Flashing backlight for critical alert
+                    for (int i = 0; i < 2; i++) {
+                        lcd.noBacklight();
+                        vTaskDelay(pdMS_TO_TICKS(50));
+                        lcd.backlight();
+                        vTaskDelay(pdMS_TO_TICKS(50));
+                    }
                 }
             } else if (xSemaphoreTake(pData->xLcdWarning, 0) == pdTRUE) {
                 lcd.print("STATE: WARNING  ");
@@ -70,6 +113,7 @@ void vTaskLcdDisplay(void *pvParameters) {
 
         // Sensor error state - completely separate from normal display
         if (xSemaphoreTake(pData->xLcdSensorError, 0) == pdTRUE) {
+            applyLcdPowerState();
             lcd.clear();
             lcd.setCursor(0, 0);
             lcd.print("SENSOR ERROR!");

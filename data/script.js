@@ -3,18 +3,27 @@ let websocket = null;
 let relayList = [];
 let deleteTarget = null;
 let tempTrendChart = null;
+let humiTrendChart = null;
+let lcdState = true;
+let aiPrediction = 0;
+let fanState = false;
+let fanSpeed = 255;
 
 const TEMP_HISTORY_POINTS = 300;
 const tempHistory = [];
+const humiHistory = [];
 
 window.addEventListener('load', () => {
   initTheme();
   initWebSocket();
   initTempTrendChart();
+  initHumiTrendChart();
   updateGauge('temp', 0);
   updateGauge('humi', 0);
-  setStatus(6, false);
+  setStatus('LCD', true);
+  setAiStatus(0);
   setStatus(8, false);
+  syncFanSpeedUI(fanSpeed);
   updateSystemStats(0, 0, -127);
 });
 
@@ -92,6 +101,48 @@ function initTempTrendChart() {
   });
 }
 
+function initHumiTrendChart() {
+  const canvas = document.getElementById('humiTrendChart');
+  if (!canvas || typeof Chart === 'undefined') return;
+
+  const ctx = canvas.getContext('2d');
+  humiTrendChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: [],
+      datasets: [{
+        label: 'Do am',
+        data: [],
+        borderColor: '#28ae74',
+        borderWidth: 2,
+        fill: true,
+        tension: 0.35,
+        pointRadius: 0,
+        backgroundColor: 'rgba(40, 174, 116, 0.18)'
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      animation: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: { mode: 'index', intersect: false }
+      },
+      scales: {
+        x: {
+          ticks: { display: false },
+          grid: { display: false }
+        },
+        y: {
+          ticks: { maxTicksLimit: 5 },
+          grid: { color: 'rgba(130, 145, 173, 0.25)' }
+        }
+      }
+    }
+  });
+}
+
 function pushTempTrend(value) {
   const now = new Date();
   const label = `${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
@@ -103,6 +154,19 @@ function pushTempTrend(value) {
   tempTrendChart.data.labels = tempHistory.map((p) => p.label);
   tempTrendChart.data.datasets[0].data = tempHistory.map((p) => p.value);
   tempTrendChart.update('none');
+}
+
+function pushHumiTrend(value) {
+  const now = new Date();
+  const label = `${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
+
+  humiHistory.push({ label, value: Number(value) || 0 });
+  if (humiHistory.length > TEMP_HISTORY_POINTS) humiHistory.shift();
+
+  if (!humiTrendChart) return;
+  humiTrendChart.data.labels = humiHistory.map((p) => p.label);
+  humiTrendChart.data.datasets[0].data = humiHistory.map((p) => p.value);
+  humiTrendChart.update('none');
 }
 
 function updateGauge(type, value) {
@@ -126,6 +190,17 @@ function setStatus(gpio, isOn) {
   el.textContent = isOn ? 'ON' : 'OFF';
   el.classList.remove('status-on', 'status-off');
   el.classList.add(isOn ? 'status-on' : 'status-off');
+}
+
+function setAiStatus(prediction) {
+  aiPrediction = Number(prediction) === 1 ? 1 : 0;
+  const el = document.getElementById('aiStatus');
+  if (!el) return;
+
+  const isNormal = aiPrediction === 0;
+  el.textContent = isNormal ? 'Normal' : 'Anomaly';
+  el.classList.remove('status-on', 'status-off');
+  el.classList.add(isNormal ? 'status-on' : 'status-off');
 }
 
 function formatUptime(totalSec) {
@@ -171,14 +246,37 @@ function onMessage(event) {
       updateGauge('temp', data.temp);
       pushTempTrend(data.temp);
     }
-    if (typeof data.humi === 'number') updateGauge('humi', data.humi);
-    if (typeof data.led !== 'undefined') setStatus(6, Boolean(data.led));
-    if (typeof data.fan !== 'undefined') setStatus(8, Boolean(data.fan));
+    if (typeof data.humi === 'number') {
+      updateGauge('humi', data.humi);
+      pushHumiTrend(data.humi);
+    }
+    if (typeof data.lcd !== 'undefined') {
+      lcdState = Boolean(data.lcd);
+      setStatus('LCD', lcdState);
+    }
+    if (typeof data.ai !== 'undefined') {
+      setAiStatus(data.ai);
+    }
+    if (typeof data.fan !== 'undefined') {
+      fanState = Boolean(data.fan);
+      setStatus(8, fanState);
+    }
+    if (typeof data.fanSpeed === 'number') {
+      syncFanSpeedUI(data.fanSpeed);
+    }
 
     updateSystemStats(data.uptime, data.heap, data.rssi);
   } catch (e) {
     console.warn('Invalid JSON:', event.data);
   }
+}
+
+function syncFanSpeedUI(value) {
+  fanSpeed = Math.max(0, Math.min(255, Number(value) || 0));
+  const slider = document.getElementById('fanSpeedSlider');
+  const valueEl = document.getElementById('fanSpeedValue');
+  if (slider) slider.value = fanSpeed.toString();
+  if (valueEl) valueEl.textContent = fanSpeed.toString();
 }
 
 function showSection(id, event) {
@@ -233,17 +331,44 @@ function toggleRelay(id) {
   if (!relay) return;
 
   relay.state = !relay.state;
-  Send_Data(
-    JSON.stringify({
-      page: 'device',
-      value: {
-        name: relay.name,
-        status: relay.state ? 'ON' : 'OFF',
-        gpio: relay.gpio
-      }
+  fetch(`/action?gpio=${encodeURIComponent(relay.gpio)}&status=${encodeURIComponent(relay.state ? 'ON' : 'OFF')}`)
+    .then((response) => {
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      return response.text();
     })
-  );
-  renderRelays();
+    .then(() => renderRelays())
+    .catch((error) => {
+      relay.state = !relay.state;
+      console.log('Relay action failed:', error);
+      renderRelays();
+    });
+}
+
+function onFanSpeedInput(value) {
+  syncFanSpeedUI(value);
+}
+
+function setFanSpeed(value) {
+  syncFanSpeedUI(value);
+  fetch(`/action?gpio=8&status=SPEED&value=${encodeURIComponent(fanSpeed)}`)
+    .then((response) => {
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      return response.text();
+    })
+    .catch((error) => console.log('Fan speed failed:', error));
+}
+
+function controlLcd(action) {
+  fetch(`/action?device=lcd&status=${encodeURIComponent(action)}`)
+    .then((response) => {
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      return response.text();
+    })
+    .then(() => {
+      lcdState = action === 'ON';
+      setStatus('LCD', lcdState);
+    })
+    .catch((error) => console.log('LCD action failed:', error));
 }
 
 function showDeleteDialog(id) {
@@ -262,16 +387,13 @@ function confirmDelete() {
 }
 
 function controlDevice(gpioPin, action) {
-  Send_Data(
-    JSON.stringify({
-      page: 'device',
-      value: {
-        gpio: gpioPin,
-        status: action
-      }
+  fetch(`/action?gpio=${encodeURIComponent(gpioPin)}&status=${encodeURIComponent(action)}`)
+    .then((response) => {
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      return response.text();
     })
-  );
-  setStatus(gpioPin, action === 'ON');
+    .then(() => setStatus(gpioPin, action === 'ON'))
+    .catch((error) => console.log('Action failed:', error));
 }
 
 document.getElementById('settingsForm').addEventListener('submit', function (e) {

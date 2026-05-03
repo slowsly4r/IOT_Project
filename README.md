@@ -58,8 +58,9 @@ All inter-task communication uses the `SystemData_t` structure, which is passed 
 typedef struct {
     float temperature;
     float humidity;
-    bool led_status;
+    bool lcd_status;
     bool fan_status;
+    uint8_t fan_speed;
     int ai_prediction;
     String wifi_ssid;
     String wifi_pass;
@@ -148,18 +149,20 @@ The ESP32-S3 creates an Access Point with a redesigned web dashboard:
 **Features:**
 - Real-time temperature and humidity gauges
 - Temperature trend chart (Chart.js, 10-minute history)
-- Control interface for 2 devices: LED (GPIO 6) and Fan (GPIO 8)
-- ON/OFF buttons for each device (LED auto-blink on GPIO 48 is not web-controllable)
+- LCD ON/OFF control (backlight and display power)
+- Fan control with ON/OFF and PWM speed slider (GPIO 8 - Cổng D5)
+- LED auto-blink (GPIO 48) is not web-controllable
 - Dark/Light theme toggle with localStorage persistence
 - Device management page for adding/removing dynamic relays
 - Settings page for WiFi STA and CoreIOT configuration
 - OTA firmware update support via ElegantOTA
+- HTTP action endpoint (`/action?gpio=X&status=ON/OFF`)
 
 **WebSocket Protocol:**
 - Server sends JSON data every 2 seconds
-- Format: `{"temp":float,"humi":float,"led":0/1,"fan":0/1,"uptime":int,"heap":int,"rssi":int}`
+- Format: `{"temp":float,"humi":float,"lcd":0/1,"fan":0/1,"ai":0/1,"fanSpeed":0-255,"uptime":int,"heap":int,"rssi":int}`
 
-**Implementation:** `src/task_webserver.cpp`, `data/index.html`, `data/script.js`, `data/styles.css`
+**Implementation:** `src/task_webserver.cpp`, `src/task_handler.cpp`, `data/index.html`, `data/script.js`, `data/styles.css`
 
 ### Task 5: TinyML Deployment and Accuracy Evaluation
 
@@ -178,21 +181,25 @@ TensorFlow Lite model running on ESP32-S3 for anomaly detection:
 
 ### Task 6: Data Publishing to CoreIOT Cloud Server
 
-The system publishes telemetry data to ThingsBoard via MQTT:
+The system publishes telemetry data to the CoreIOT ecosystem (ThingsBoard-based) via MQTT:
 
-**Connectivity:**
+**Connectivity & Custom Topic Override:**
 - ESP32-S3 connects to WiFi in Station (STA) mode
-- Publishes telemetry to ThingsBoard server
+- Connects via Raw MQTT (port 1883) utilizing `PubSubClient` directly.
+- **Architectural Highlight:** CoreIOT Device Profiles often hardcode the telemetry topic to something non-standard (e.g., `esp/telemetry`). To bypass the standard ThingsBoard SDK constraints (`v1/devices/me/telemetry`), the project implements native raw MQTT publishing.
+- The Device API Token is used as the MQTT username.
 
-**Published Data:**
-- Temperature (degrees C)
-- Humidity (%)
-- AI warning flag (0/1)
+**Published Telemetry:**
+- `temperature` (degrees C)
+- `humidity` (%)
 
-**Cloud Control:**
-- RPC callback `setLedSwitchValue` for remote LED control (GPIO 6)
-- RPC callback `setFanSwitchValue` for remote Fan control (GPIO 8)
-- Device metadata (MAC address, local IP) sent as attributes
+**Device Attributes:**
+- Device metadata (MAC address, local IP) sent to `esp/attributes` right after connecting.
+
+**Debug Logging:**
+- Prints exact Server/Token/Port on each connection attempt
+- Prints ✅/❌ for each telemetry send result
+- Prints WiFi status when STA is not connected
 
 **Publishing Interval:** 10 seconds
 
@@ -206,15 +213,14 @@ The system publishes telemetry data to ThingsBoard via MQTT:
 
 ### GPIO Pin Mapping
 
-| GPIO | Function |
-|------|----------|
-| 48 | LED auto-blink (Task 1 - temperature indicator) |
-| 6 | LED manual control (Web/Cloud) |
-| 8 | Fan manual control (Web/Cloud) |
-| 11 | I2C SDA (DHT20, LCD) |
-| 12 | I2C SCL (DHT20, LCD) |
-| 21 | NeoPixel data |
-| USB | Serial debug (115200 baud) |
+| GPIO | Cổng | Function |
+|------|------|----------|
+| 48 | D13 | LED auto-blink (Task 1 - temperature indicator) |
+| 8 | D5 | Fan PWM control (Web/Cloud) |
+| 11 | SDA | I2C SDA (DHT20, LCD) |
+| 12 | SCL | I2C SCL (DHT20, LCD) |
+| 45 | — | NeoPixel WS2812 data |
+| USB | — | Serial debug (115200 baud) |
 
 ### I2C Devices
 
@@ -263,8 +269,7 @@ YoloUNO_PlatformIO-RTOS_Project/
 | TensorFlowLite_ESP32 | 1.0.0 | TinyML inference |
 | Adafruit NeoPixel | 1.15.1 | RGB LED control |
 | ESPAsyncWebServer | latest | Async web server |
-| Arduino_MQTT_Client | - | ThingsBoard MQTT |
-| PubSubClient | - | MQTT protocol |
+| PubSubClient | - | Dedicated MQTT protocol (Raw publishing) |
 | LiquidCrystal I2C | - | LCD display |
 
 ## Setup and Installation

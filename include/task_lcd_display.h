@@ -6,6 +6,9 @@
 #include <LiquidCrystal_I2C.h>
 #include "global.h"
 
+void LcdInit();
+void LcdSetPower(bool enabled);
+bool LcdGetPower();
 void vTaskLcdDisplay(void *pvParameters);
 
 #endif

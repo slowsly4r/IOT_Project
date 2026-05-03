@@ -165,7 +165,7 @@ body {
   background: rgba(255, 255, 255, 0.55); border: 1px solid #dbe3f0;
 }
 .trend-head { font-size: 0.86rem; color: var(--muted); margin-bottom: 8px; }
-#tempTrendChart { width: 100%; height: 130px !important; }
+#tempTrendChart, #humiTrendChart { width: 100%; height: 130px !important; }
 
 .control-header { display: flex; align-items: center; gap: 12px; padding: 0 6px; }
 .control-header h3 { margin: 0; }
@@ -181,6 +181,26 @@ body {
 .status-off { color: #b03044; background: rgba(207, 61, 83, 0.16); }
 
 .btn-group { display: flex; gap: 10px; }
+.fan-speed-wrap {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+}
+.fan-speed-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 10px;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+.fan-speed-head strong { color: var(--text); font-size: 1rem; }
+.fan-speed-slider {
+  width: 100%;
+  height: 6px;
+  accent-color: var(--accent);
+}
 .btn-glow {
   flex: 1; border-radius: 12px; padding: 10px 14px; border: 1px solid transparent;
   font-weight: 800; letter-spacing: 0.03em; cursor: pointer; transition: all 0.2s ease;
