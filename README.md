@@ -326,11 +326,8 @@ To add new actuator devices:
 5. Add control buttons in `data/index.html`
 
 ## Credits
-
+Thank Dr.Le Trong Nhan for suppporting us complete this project. 
 This project is based on the YoloUNO_PlatformIO-RTOS_Project by nhanksd85.
 
 Original repository: https://github.com/nhanksd85/YoloUNO_PlatformIO/tree/RTOS_Project
 
-## License
-
-This project is for educational purposes as part of the IoT Systems course assignment.
